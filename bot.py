@@ -61,6 +61,24 @@ def new_tx(from_id, to_id, amount):
     cur.close()
     conn.close()
 
+def get_txes(states, to_id=None):
+    '''Get all txes in one of states that belong have been sent to to_id'''
+
+    conn = mysql.connect(host='127.0.0.1', port=3306,
+                               user='root', password='password',
+                               db='tipper')
+    cur = conn.cursor()
+    state_str = "('" + "','".join(states) + "')"
+    if to_id is None:
+        cur.execute('SELECT * FROM transactions WHERE state IN %s;'%state_str)
+    else:
+        cur.execute('SELECT * FROM transactions WHERE state IN %s AND to_id = %%s;'%state_str, (to_id,))
+    txs = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return txs
+
 ####################################################################33
 
 @bot.command(pass_context=True)
@@ -206,6 +224,11 @@ def tip(ctx, to_user, amount):
     yield from bot.say('A tip of %s dash will be offered to %s.'%(amount, to_user))
 
 
+@asyncio.coroutine
+def process_txs():
+    '''Process and try to advance all txes in database'''
+    print(get_txes(['new']))
+
     
 rates = {}
 @asyncio.coroutine
@@ -225,4 +248,5 @@ def prices():
 
 
 bot.loop.create_task(update_prices())
+bot.loop.create_task(process_txs())
 bot.run('MzgwODI4NjkzMzA1NDkxNDY5.DPDNHA.zyO0ox0QBacQqEIuTD7Ch9q88NE')
